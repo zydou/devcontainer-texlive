@@ -1,0 +1,107 @@
+---
+name: Build Devcontainer
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - src/**
+      - .github/workflows/build.yml
+  schedule:
+    - cron: 0 12 1 * *
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions: write-all
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        texlive_version: [2023, 2022, 2021, 2020, 2019, 2018]
+        base_image: [buster, bullseye, bookworm, trixie, xenial, bionic, focal, jammy]
+    name: Build ${{ matrix.texlive_version }}-${{ matrix.base_image }}
+    steps:
+      - uses: actions/checkout@main
+
+      - name: Delete built-in docker images to get more disk space
+        run: docker system prune --all --volumes --force
+
+      - name: Adjust Dockerfile
+        shell: bash
+        run: |
+          sed -i "s/ARG texlive_version/ARG texlive_version=${{ matrix.texlive_version }}/" src/.devcontainer/Dockerfile
+          sed -i "s/ARG base_image/ARG base_image=${{ matrix.base_image }}/" src/.devcontainer/Dockerfile
+          cat src/.devcontainer/Dockerfile
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@master
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@master
+      - name: Login to DockerHub
+        uses: docker/login-action@master
+        with:
+          username: zydou
+          password: ${{ secrets.PAT }}
+
+      - name: Build for tag latest
+        if: ${{ matrix.base_image == 'trixie' && matrix.texlive_version == 2023 }}
+        uses: devcontainers/ci@v0.3
+        env:
+          BUILDX_NO_DEFAULT_ATTESTATIONS: true
+        with:
+          imageName: ${{ github.repository }}
+          imageTag: latest,${{ matrix.texlive_version }},${{ matrix.texlive_version }}-${{ matrix.base_image }}
+          subFolder: src
+          platform: linux/amd64,linux/arm64
+          skipContainerUserIdUpdate: true
+          noCache: true
+          push: always
+
+      - name: Build for tag texlive_version
+        if: ${{ matrix.base_image == 'trixie' && matrix.texlive_version != 2023 }}
+        uses: devcontainers/ci@v0.3
+        env:
+          BUILDX_NO_DEFAULT_ATTESTATIONS: true
+        with:
+          imageName: ${{ github.repository }}
+          imageTag: ${{ matrix.texlive_version }},${{ matrix.texlive_version }}-${{ matrix.base_image }}
+          subFolder: src
+          platform: linux/amd64,linux/arm64
+          skipContainerUserIdUpdate: true
+          noCache: true
+          push: always
+
+      - name: Build for tag base_image
+        if: ${{ matrix.base_image != 'trixie' && matrix.texlive_version == 2023 }}
+        uses: devcontainers/ci@v0.3
+        env:
+          BUILDX_NO_DEFAULT_ATTESTATIONS: true
+        with:
+          imageName: ${{ github.repository }}
+          imageTag: ${{ matrix.base_image }},${{ matrix.texlive_version }}-${{ matrix.base_image }}
+          subFolder: src
+          platform: linux/amd64,linux/arm64
+          skipContainerUserIdUpdate: true
+          noCache: true
+          push: always
+
+      - name: Build for tag texlive_version-base_image
+        if: ${{ matrix.base_image != 'trixie' && matrix.texlive_version != 2023 }}
+        uses: devcontainers/ci@v0.3
+        env:
+          BUILDX_NO_DEFAULT_ATTESTATIONS: true
+        with:
+          imageName: ${{ github.repository }}
+          imageTag: ${{ matrix.texlive_version }}-${{ matrix.base_image }}
+          subFolder: src
+          platform: linux/amd64,linux/arm64
+          skipContainerUserIdUpdate: true
+          noCache: true
+          push: always

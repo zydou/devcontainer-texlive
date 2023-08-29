@@ -1,0 +1,36 @@
+{
+  "name": "latex",
+  // "image": "zydou/devcontainer-latex:2021",
+  "build": {
+    "dockerfile": "./Dockerfile",
+    "context": "."
+  },
+  // See image:tags definition at https://hub.docker.com/r/texlive/texlive
+  // "runArgs": ["--name=latex-devcontainer"], // Docker CLI args
+  // 👇 Features to add to the Dev Container. More info: https://containers.dev/implementors/features.
+  "features": {
+    "ghcr.io/zydou/devcontainer-features/set-user:latest": {
+      "username": "latex" // add a normal user with sudo privileges
+    }
+  },
+
+  // 👇 Configure tool-specific properties.
+  "customizations": {
+    // Configure properties specific to VS Code.
+    "vscode": {
+      // Set *default* container specific settings.json values on container create.
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+        "[latex]": {"editor.defaultFormatter": "James-Yu.latex-workshop"},
+        "[bibtex]": {"editor.defaultFormatter": "James-Yu.latex-workshop"}
+      },
+      // Add the IDs of extensions you want installed when the container is created.
+      "extensions": ["james-yu.latex-workshop", "JeffersonQin.latex-snippets-jeff"]
+    }
+  },
+  "remoteEnv": {
+    "PDFVIEWER": "code"
+  },
+  // 👇 Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+  "remoteUser": "latex"
+}
